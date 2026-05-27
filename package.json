@@ -5,6 +5,10 @@
   "type": "module",
   "description": "A tiny sample app for validating the FireFunc auto-fix loop end-to-end.",
   "scripts": {
-    "test": "node --test"
+    "test": "node --test",
+    "screenshots": "node scripts/screenshot-bugs.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.55.0"
   }
 }
