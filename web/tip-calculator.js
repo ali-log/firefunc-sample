@@ -9,9 +9,11 @@
 // NaN/Infinity values that look broken to users.
 
 export function splitBill({ bill, tipPercent, guests }) {
-  const tip = bill * (tipPercent / 100);
-  const total = bill + tip;
-  const perGuest = total / guests;
+  const safeBill = Number.isFinite(bill) && bill >= 0 ? bill : 0;
+  const safeGuests = Number.isInteger(guests) && guests >= 1 ? guests : 1;
+  const tip = safeBill * (tipPercent / 100);
+  const total = safeBill + tip;
+  const perGuest = total / safeGuests;
   return { tip, total, perGuest };
 }
 
@@ -31,6 +33,15 @@ function wire() {
     const bill = parseFloat(billEl.value);
     const tipPercent = parseFloat(tipEl.value);
     const guests = parseInt(guestsEl.value, 10);
+
+    if (!Number.isFinite(bill) || bill < 0) {
+      resultEl.innerHTML = '<div class="error">Please enter a bill amount</div>';
+      return;
+    }
+    if (!Number.isInteger(guests) || guests < 1) {
+      resultEl.innerHTML = '<div class="error">Need at least 1 guest</div>';
+      return;
+    }
 
     const { tip, total, perGuest } = splitBill({ bill, tipPercent, guests });
 
