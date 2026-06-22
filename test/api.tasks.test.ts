@@ -92,6 +92,12 @@ describe("tasks API — CRUD", () => {
     expect(res.json().error).toBe("validation_error");
   });
 
+  it("rejects a whitespace-only title (400)", async () => {
+    const res = await createTask({ title: "   " });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toBe("validation_error");
+  });
+
   it("requires auth to create", async () => {
     const res = await app.inject({
       method: "POST",
