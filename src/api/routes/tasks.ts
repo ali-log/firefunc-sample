@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { createTasksRepo } from "../../db/tasks-repo.js";
 import { createProjectsRepo } from "../../db/projects-repo.js";
+import { createEventsRepo } from "../../db/events-repo.js";
 import { parseQuery, toTaskQuery } from "../../core/query-dsl.js";
 import { canTransition } from "../../core/state-machine.js";
 import {
@@ -78,6 +79,7 @@ const listQuerySchema = z.object({
 export async function registerTaskRoutes(app: FastifyInstance): Promise<void> {
   const tasks = createTasksRepo();
   const projects = createProjectsRepo();
+  const events = createEventsRepo();
 
   // GET /api/tasks — list with structured filters + DSL free-text search.
   app.get("/api/tasks", async (req, reply) => {
@@ -130,6 +132,15 @@ export async function registerTaskRoutes(app: FastifyInstance): Promise<void> {
     if (!task) return notFound(reply, "task not found");
     return task;
   });
+
+  // GET /api/tasks/:id/events — task event history, oldest first.
+  app.get<{ Params: { id: string } }>(
+    "/api/tasks/:id/events",
+    async (req, reply) => {
+      if (!tasks.getById(req.params.id)) return notFound(reply, "task not found");
+      return events.listByTask(req.params.id);
+    },
+  );
 
   // POST /api/tasks
   app.post("/api/tasks", async (req, reply) => {
