@@ -37,6 +37,17 @@ describe("query-dsl: parseQuery basics", () => {
     expect(parseQuery("")).toEqual({ clauses: [], freeText: "" });
     expect(parseQuery("   \t\n ")).toEqual({ clauses: [], freeText: "" });
   });
+
+  it("does not throw on empty/blank input and yields a match-all query", () => {
+    // Regression: an empty query used to crash with
+    // `TypeError: Cannot read properties of null (reading '0')`.
+    expect(() => parseQuery("")).not.toThrow();
+    expect(() => parseQuery("   ")).not.toThrow();
+    expect(compileToSql(toTaskQuery(parseQuery("")))).toEqual({
+      where: "1 = 1",
+      params: [],
+    });
+  });
 });
 
 describe("query-dsl: quotes", () => {
