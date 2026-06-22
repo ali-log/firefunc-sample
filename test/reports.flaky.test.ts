@@ -1,47 +1,55 @@
 import { describe, expect, it } from "vitest";
 
-// FIREFUNC-BUG(4): FLAKY — this suite depends on wall-clock ordering (Date.now()
-// resolution + sort stability on equal keys). It passes most runs but
-// intermittently fails when two events land in the same millisecond. The fix is
-// to make the ordering deterministic (monotonic sequence / tie-breaker), not to
-// rely on the real clock.
+// Previously FIREFUNC-BUG(4): this suite depended on wall-clock ordering
+// (Date.now() resolution + sort stability on equal keys) and intermittently
+// failed when two events landed in the same millisecond. It is now
+// deterministic: timestamps come from an injected monotonic clock and ties are
+// broken by a stable per-entry sequence number. No reports logic was changed.
 
 interface ReportEntry {
   label: string;
-  /** Captured from the wall clock at "creation" time. */
+  /** Captured from an injected clock at "creation" time. */
   at: number;
   seq: number;
 }
 
+/** A monotonic clock: each read returns a strictly larger value. */
+function monotonicClock(start = 0): () => number {
+  let t = start;
+  return () => (t += 1);
+}
+
 /**
- * Simulate two activity entries recorded back-to-back. On fast machines both
- * Date.now() reads frequently return the SAME millisecond, so `at` ties.
+ * Simulate two activity entries recorded back-to-back, sourcing timestamps from
+ * an injected clock instead of the wall clock so ordering is reproducible.
  */
-function recordPair(): ReportEntry[] {
-  const a: ReportEntry = { label: "first", at: Date.now(), seq: 0 };
-  // Busy-wait a SUB-millisecond, variable amount that straddles the ~1ms clock
-  // tick. Sometimes the wall clock advances between the two reads, sometimes it
-  // does not — this is what makes the timestamp-ordering assertion flaky.
-  const spinUntil = performance.now() + Math.random();
-  while (performance.now() < spinUntil) {
-    /* spin */
-  }
-  const b: ReportEntry = { label: "second", at: Date.now(), seq: 1 };
+function recordPair(now: () => number): ReportEntry[] {
+  const a: ReportEntry = { label: "first", at: now(), seq: 0 };
+  const b: ReportEntry = { label: "second", at: now(), seq: 1 };
   return [a, b];
 }
 
-describe("reports (flaky: wall-clock ordering dependent)", () => {
-  it("orders activity entries by wall-clock timestamp", () => {
-    const entries = recordPair();
-    // Sort purely by timestamp. When timestamps tie (same ms), order is not
-    // guaranteed, so the chronological assertion below intermittently fails.
-    const ordered = [...entries].sort((x, y) => x.at - y.at);
+describe("reports (deterministic activity ordering)", () => {
+  it("orders activity entries by timestamp, breaking ties stably by seq", () => {
+    const entries = recordPair(monotonicClock());
+    // Sort by timestamp with a stable seq tie-breaker, so equal timestamps
+    // still yield a deterministic chronological order.
+    const ordered = [...entries].sort((x, y) => x.at - y.at || x.seq - y.seq);
+    expect(ordered.map((e) => e.label)).toEqual(["first", "second"]);
+  });
+
+  it("ties on equal timestamps are resolved deterministically by seq", () => {
+    // A clock that always returns the same value forces a tie; the seq
+    // tie-breaker must still produce a stable, chronological order.
+    const frozen = () => 1_000;
+    const entries = recordPair(frozen);
+    const ordered = [...entries].sort((x, y) => x.at - y.at || x.seq - y.seq);
     expect(ordered.map((e) => e.label)).toEqual(["first", "second"]);
   });
 
   it("two consecutive events have strictly increasing timestamps", () => {
-    const [a, b] = recordPair();
-    // Depends on the clock advancing by >=1ms between the two reads — flaky.
+    const [a, b] = recordPair(monotonicClock());
+    // The monotonic clock guarantees the second read is strictly greater.
     expect(b!.at).toBeGreaterThan(a!.at);
   });
 });
