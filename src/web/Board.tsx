@@ -6,6 +6,15 @@ import { PRIORITY_COLORS, STATE_COLORS } from "./theme.js";
 import { useTheme } from "./ThemeContext.js";
 import type { Task, TaskQuery, TaskState } from "../shared/types.js";
 
+/**
+ * Percentage of `total` tasks that fall in a column, rounded to a whole number.
+ * Guards the zero-task case so an empty project shows 0% instead of NaN%/Infinity%.
+ */
+export function columnPercentage(columnCount: number, total: number): number {
+  if (total <= 0) return 0;
+  return Math.round((columnCount / total) * 100);
+}
+
 export interface BoardProps {
   query: TaskQuery;
   tasks?: Task[];
@@ -65,8 +74,7 @@ export function Board({
     <div data-testid="board" style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
       {TASK_STATES.map((state) => {
         const column = tasks.filter((t) => t.state === state);
-        // FIREFUNC-BUG(2): pct badge divides by tasks.length with no zero-guard → 0/0=NaN (and n/0=Infinity) when a project has 0 tasks.
-        const pct = Math.round((column.length / tasks.length) * 100);
+        const pct = columnPercentage(column.length, tasks.length);
         const droppable = dragging != null && canTransition(dragging.state, state);
         const isOver = over === state && droppable;
         return (
