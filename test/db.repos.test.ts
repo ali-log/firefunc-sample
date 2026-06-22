@@ -113,6 +113,24 @@ describe("db repositories", () => {
       expect(fetched?.recurrence?.freq).toBe("weekly");
     });
 
+    it("rejects an empty or whitespace-only title", () => {
+      expect(() =>
+        tasks.create({ projectId: project.id, title: "", reporterId: owner.id }),
+      ).toThrow(/title/i);
+      expect(() =>
+        tasks.create({ projectId: project.id, title: "   ", reporterId: owner.id }),
+      ).toThrow(/title/i);
+    });
+
+    it("trims surrounding whitespace from the title", () => {
+      const t = tasks.create({
+        projectId: project.id,
+        title: "  Padded  ",
+        reporterId: owner.id,
+      });
+      expect(t.title).toBe("Padded");
+    });
+
     it("assigns appended positions per project", () => {
       const a = tasks.create({
         projectId: project.id,

@@ -207,13 +207,17 @@ export function createTasksRepo(db: DB = getDb()): TasksRepo {
 
   const repo: TasksRepo = {
     create(input: CreateTaskInput): Task {
+      const title = (input.title ?? "").trim();
+      if (!title) {
+        throw new Error("task title must not be empty");
+      }
       const id = randomUUID();
       const ts = nowIso();
       const row: TaskRow = {
         id,
         project_id: input.projectId,
         parent_id: input.parentId ?? null,
-        title: input.title,
+        title,
         description: input.description ?? null,
         state: "todo",
         priority: input.priority ?? "medium",
