@@ -1,3 +1,8 @@
+// Pin a DST-observing timezone so whole-day SLA math is exercised across a
+// spring-forward boundary. All assertions below use epoch ms / UTC ISO, so the
+// pinned zone does not affect any other case.
+process.env.TZ = "America/New_York";
+
 import { describe, expect, it } from "vitest";
 import {
   effectiveSlaMinutes,
@@ -53,6 +58,26 @@ describe("sla: slaDeadline", () => {
   it("adds the window in minutes", () => {
     const created = new Date("2026-01-01T00:00:00.000Z");
     expect(slaDeadline(created, 90).toISOString()).toBe("2026-01-01T01:30:00.000Z");
+  });
+
+  const ONE_DAY_MIN = 60 * 24;
+
+  it("is exactly N*24h later across a US spring-forward DST boundary", () => {
+    // 2026-03-08 02:00 local is when US clocks jump to 03:00 (EST -> EDT).
+    // createdAt sits just before that boundary; a one-day SLA must land exactly
+    // 24h later in real (epoch) time, not keep the same wall-clock hour.
+    const created = new Date("2026-03-08T05:00:00.000Z"); // 00:00 EST
+    const deadline = slaDeadline(created, ONE_DAY_MIN);
+    expect(deadline.getTime() - created.getTime()).toBe(ONE_DAY_MIN * 60_000);
+    expect(deadline.toISOString()).toBe("2026-03-09T05:00:00.000Z");
+  });
+
+  it("is exactly N*24h later for a non-DST control window", () => {
+    // Mid-summer: no DST transition is crossed by a one-day window.
+    const created = new Date("2026-07-15T12:00:00.000Z");
+    const deadline = slaDeadline(created, ONE_DAY_MIN);
+    expect(deadline.getTime() - created.getTime()).toBe(ONE_DAY_MIN * 60_000);
+    expect(deadline.toISOString()).toBe("2026-07-16T12:00:00.000Z");
   });
 });
 
