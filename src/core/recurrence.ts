@@ -1,3 +1,17 @@
+/**
+ * Recurrence module: date math for repeating tasks driven by a `RecurrenceRule`.
+ *
+ * Supports `daily`, `weekly`, and `monthly` frequencies with an `interval`
+ * multiplier, and honours the rule's `count` (total occurrences including the
+ * anchor) and `until` (inclusive upper bound) limits. Monthly steps use
+ * calendar-month arithmetic, clamping to the last valid day of the target month.
+ *
+ * Main exports:
+ *   - {@link isRecurring}        — whether a rule actually produces repeats.
+ *   - {@link nextOccurrence}     — the next date strictly after a given point.
+ *   - {@link expandOccurrences}  — the series of occurrence dates from an anchor.
+ */
+
 // FIREFUNC-BUG(5): ZERO test coverage — this module (isRecurring/nextOccurrence/expandOccurrences) has no test file; coverage-backfill target.
 import type { RecurrenceRule } from "../shared/types.js";
 
