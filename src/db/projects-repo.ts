@@ -43,7 +43,7 @@ export interface ProjectsRepo {
   getByKey(key: string): Project | null;
   update(id: string, patch: UpdateProjectInput): Project | null;
   delete(id: string): boolean;
-  list(): Project[];
+  list(opts?: { includeArchived?: boolean }): Project[];
   nextTaskNumber(projectId: string): number;
 }
 
@@ -122,10 +122,12 @@ export function createProjectsRepo(db: DB = getDb()): ProjectsRepo {
       return info.changes > 0;
     },
 
-    list(): Project[] {
-      const rows = db
-        .prepare("SELECT * FROM projects ORDER BY created_at ASC, id ASC")
-        .all() as ProjectRow[];
+    list(opts: { includeArchived?: boolean } = {}): Project[] {
+      // Archived projects are excluded by default; callers opt in explicitly.
+      const sql = opts.includeArchived
+        ? "SELECT * FROM projects ORDER BY created_at ASC, id ASC"
+        : "SELECT * FROM projects WHERE status != 'archived' ORDER BY created_at ASC, id ASC";
+      const rows = db.prepare(sql).all() as ProjectRow[];
       return rows.map(mapProject);
     },
 
