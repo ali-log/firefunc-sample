@@ -198,6 +198,75 @@ describe("tasks API — state machine", () => {
   });
 });
 
+describe("tasks API — event history", () => {
+  it("returns task events ordered by createdAt ascending", async () => {
+    const created = await createTask({ title: "Audited task" });
+    const id = created.json().id;
+
+    const { getDb } = await import("../src/db/index.js");
+    const db = getDb();
+    const insert = db.prepare(
+      `INSERT INTO task_events
+         (id, task_id, actor_id, type, from_state, to_state, payload, created_at)
+       VALUES (@id, @task_id, @actor_id, @type, @from_state, @to_state, @payload, @created_at)`,
+    );
+    // Insert out of chronological order to prove the endpoint sorts ascending.
+    insert.run({
+      id: "evt-2",
+      task_id: id,
+      actor_id: reporterId,
+      type: "state_changed",
+      from_state: "todo",
+      to_state: "in_progress",
+      payload: JSON.stringify({ note: "started" }),
+      created_at: "2026-01-02T00:00:00.000Z",
+    });
+    insert.run({
+      id: "evt-1",
+      task_id: id,
+      actor_id: reporterId,
+      type: "created",
+      from_state: null,
+      to_state: null,
+      payload: null,
+      created_at: "2026-01-01T00:00:00.000Z",
+    });
+
+    const res = await app.inject({
+      method: "GET",
+      url: `/api/tasks/${id}/events`,
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.map((e: { id: string }) => e.id)).toEqual(["evt-1", "evt-2"]);
+    expect(body[0].taskId).toBe(id);
+    expect(body[0].type).toBe("created");
+    expect(body[1].type).toBe("state_changed");
+    expect(body[1].fromState).toBe("todo");
+    expect(body[1].payload).toEqual({ note: "started" });
+  });
+
+  it("returns an empty array for a task with no events", async () => {
+    const created = await createTask({ title: "Quiet task" });
+    const id = created.json().id;
+    const res = await app.inject({
+      method: "GET",
+      url: `/api/tasks/${id}/events`,
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual([]);
+  });
+
+  it("404s for a non-existent task", async () => {
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/tasks/ghost/events",
+    });
+    expect(res.statusCode).toBe(404);
+    expect(res.json().error).toBe("not_found");
+  });
+});
+
 describe("tasks API — filtering & pagination", () => {
   let filterProjectId: string;
 
