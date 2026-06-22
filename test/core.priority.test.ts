@@ -4,9 +4,50 @@ import {
   priorityWeight,
   rankScore,
   sortByRank,
+  urgencyScore,
 } from "../src/core/priority.js";
 import { PRIORITY_WEIGHT } from "../src/shared/constants.js";
 import type { Priority, Task } from "../src/shared/types.js";
+
+// Frozen copy of rankScore as it stood BEFORE the urgencyScore extraction,
+// with the due-date urgency logic inlined. Used to prove the refactor is a
+// behaviour-preserving change (exact numeric parity, not just ordering).
+function rankScoreLegacy(task: Task, now: Date): number {
+  const MS_PER_HOUR = 3_600_000;
+  const PRIORITY_FACTOR = 100;
+  const OVERDUE_BONUS = 50;
+  const DUE_SOON_WINDOW_HOURS = 72;
+  const DUE_SOON_FACTOR = 30;
+  const AGE_FACTOR = 0.5;
+  const AGE_CAP = 20;
+
+  if (task.state === "done") {
+    return Number.NEGATIVE_INFINITY;
+  }
+
+  let score = (PRIORITY_WEIGHT[task.priority] ?? 0) * PRIORITY_FACTOR;
+
+  if (task.dueAt) {
+    const due = new Date(task.dueAt).getTime();
+    if (!Number.isNaN(due)) {
+      const hoursUntilDue = (due - now.getTime()) / MS_PER_HOUR;
+      if (hoursUntilDue <= 0) {
+        score += OVERDUE_BONUS + Math.min(OVERDUE_BONUS, -hoursUntilDue);
+      } else if (hoursUntilDue < DUE_SOON_WINDOW_HOURS) {
+        const closeness = 1 - hoursUntilDue / DUE_SOON_WINDOW_HOURS;
+        score += closeness * DUE_SOON_FACTOR;
+      }
+    }
+  }
+
+  const created = new Date(task.createdAt).getTime();
+  if (!Number.isNaN(created)) {
+    const ageHours = Math.max(0, (now.getTime() - created) / MS_PER_HOUR);
+    score += Math.min(AGE_CAP, ageHours * AGE_FACTOR);
+  }
+
+  return score;
+}
 
 function makeTask(over: Partial<Task> = {}): Task {
   const createdAt = "2026-01-01T00:00:00.000Z";
@@ -91,6 +132,55 @@ describe("priority: rankScore", () => {
     const old = makeTask({ createdAt: "2026-05-01T00:00:00.000Z" });
     const fresh = makeTask({ createdAt: "2026-06-01T00:00:00.000Z" });
     expect(rankScore(old, now)).toBeGreaterThan(rankScore(fresh, now));
+  });
+});
+
+describe("priority: urgencyScore extraction parity", () => {
+  const now = new Date("2026-06-01T00:00:00.000Z");
+
+  // A spread of due-date situations: none, overdue (just/long), within window
+  // at varying closeness, exactly at the window edge, far future, unparseable.
+  const dueCases: Array<string | null> = [
+    null,
+    "garbage",
+    "2026-05-31T00:00:00.000Z", // 24h overdue
+    "2026-04-01T00:00:00.000Z", // long overdue (past the bonus cap)
+    "2026-06-01T00:00:00.000Z", // due exactly now (boundary, <= 0)
+    "2026-06-01T06:00:00.000Z", // 6h out
+    "2026-06-02T00:00:00.000Z", // 24h out
+    "2026-06-03T23:00:00.000Z", // 71h out (just inside window)
+    "2026-06-04T00:00:00.000Z", // 72h out (exactly at window edge)
+    "2026-12-31T00:00:00.000Z", // far future
+  ];
+  const priorities: Priority[] = ["low", "medium", "high", "urgent"];
+
+  it("rankScore is numerically identical to the pre-extraction implementation", () => {
+    for (const priority of priorities) {
+      for (const dueAt of dueCases) {
+        for (const state of ["todo", "in_progress", "done"] as Task["state"][]) {
+          const task = makeTask({ priority, dueAt, state });
+          expect(rankScore(task, now)).toBe(rankScoreLegacy(task, now));
+        }
+      }
+    }
+  });
+
+  it("rankScore composes urgencyScore additively over priority and age", () => {
+    for (const dueAt of dueCases) {
+      const task = makeTask({ priority: "high", dueAt });
+      const withoutUrgency = rankScore(makeTask({ priority: "high", dueAt: null }), now);
+      expect(rankScore(task, now)).toBeCloseTo(
+        withoutUrgency + urgencyScore(task, now),
+        10,
+      );
+    }
+  });
+
+  it("urgencyScore returns 0 for no / unparseable / out-of-window due dates", () => {
+    expect(urgencyScore(makeTask({ dueAt: null }), now)).toBe(0);
+    expect(urgencyScore(makeTask({ dueAt: "garbage" }), now)).toBe(0);
+    expect(urgencyScore(makeTask({ dueAt: "2026-06-04T00:00:00.000Z" }), now)).toBe(0);
+    expect(urgencyScore(makeTask({ dueAt: "2026-12-31T00:00:00.000Z" }), now)).toBe(0);
   });
 });
 
