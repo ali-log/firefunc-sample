@@ -37,7 +37,7 @@ export const STATE_TRANSITIONS: Record<TaskState, readonly TaskState[]> = {
   done: ["todo", "in_progress"],
 };
 
-export const DEFAULT_PAGE_LIMIT = 25;
+export const DEFAULT_PAGE_LIMIT = 75;
 export const MAX_PAGE_LIMIT = 200;
 
 // Default SLA windows (minutes) per priority, used when a task has no explicit SLA.

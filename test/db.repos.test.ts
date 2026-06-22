@@ -205,7 +205,7 @@ describe("db repositories", () => {
         const page = tasks.list({ projectId: project.id });
         expect(page.total).toBe(4);
         expect(page.items).toHaveLength(4);
-        expect(page.limit).toBe(25);
+        expect(page.limit).toBe(75);
         expect(page.offset).toBe(0);
       });
 
