@@ -27,6 +27,37 @@ export function comparePriority(a: Priority, b: Priority): number {
 }
 
 /**
+ * Due-date urgency contribution to a task's rank score: overdue tasks get a
+ * flat bonus plus a growing term for how far past due they are, and tasks due
+ * within the urgency window ramp up linearly as the deadline approaches.
+ *
+ * Pure helper composed by {@link rankScore}. Returns 0 when the task has no
+ * due date, an unparseable due date, or a deadline beyond the urgency window.
+ */
+export function urgencyScore(task: Task, now: Date): number {
+  if (!task.dueAt) {
+    return 0;
+  }
+
+  const due = new Date(task.dueAt).getTime();
+  if (Number.isNaN(due)) {
+    return 0;
+  }
+
+  const hoursUntilDue = (due - now.getTime()) / MS_PER_HOUR;
+  if (hoursUntilDue <= 0) {
+    // Overdue: flat bonus plus a growing term for how far past due.
+    return OVERDUE_BONUS + Math.min(OVERDUE_BONUS, -hoursUntilDue);
+  }
+  if (hoursUntilDue < DUE_SOON_WINDOW_HOURS) {
+    // Approaching: closer deadline → larger contribution.
+    const closeness = 1 - hoursUntilDue / DUE_SOON_WINDOW_HOURS;
+    return closeness * DUE_SOON_FACTOR;
+  }
+  return 0;
+}
+
+/**
  * Composite ranking score combining, in order of influence:
  *   1. priority weight (dominant term),
  *   2. due-date urgency — overdue tasks get a flat bonus, and tasks due within
@@ -43,20 +74,7 @@ export function rankScore(task: Task, now: Date = new Date()): number {
 
   let score = priorityWeight(task.priority) * PRIORITY_FACTOR;
 
-  if (task.dueAt) {
-    const due = new Date(task.dueAt).getTime();
-    if (!Number.isNaN(due)) {
-      const hoursUntilDue = (due - now.getTime()) / MS_PER_HOUR;
-      if (hoursUntilDue <= 0) {
-        // Overdue: flat bonus plus a growing term for how far past due.
-        score += OVERDUE_BONUS + Math.min(OVERDUE_BONUS, -hoursUntilDue);
-      } else if (hoursUntilDue < DUE_SOON_WINDOW_HOURS) {
-        // Approaching: closer deadline → larger contribution.
-        const closeness = 1 - hoursUntilDue / DUE_SOON_WINDOW_HOURS;
-        score += closeness * DUE_SOON_FACTOR;
-      }
-    }
-  }
+  score += urgencyScore(task, now);
 
   const created = new Date(task.createdAt).getTime();
   if (!Number.isNaN(created)) {
