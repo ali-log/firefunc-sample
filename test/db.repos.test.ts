@@ -82,6 +82,22 @@ describe("db repositories", () => {
       expect(updated?.description).toBe("done");
     });
 
+    it("excludes archived from list() by default and includes with includeArchived", () => {
+      const archived = projects.create({
+        key: "ARCH",
+        name: "Archived",
+        ownerId: owner.id,
+      });
+      projects.update(archived.id, { status: "archived" });
+
+      const def = projects.list();
+      expect(def.some((p) => p.id === archived.id)).toBe(false);
+      expect(def.some((p) => p.id === project.id)).toBe(true);
+
+      const all = projects.list({ includeArchived: true });
+      expect(all.some((p) => p.id === archived.id)).toBe(true);
+    });
+
     it("allocates strictly increasing task numbers", () => {
       const a = projects.nextTaskNumber(project.id);
       const b = projects.nextTaskNumber(project.id);

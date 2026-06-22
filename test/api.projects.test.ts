@@ -98,6 +98,38 @@ describe("projects API", () => {
     expect(dup.statusCode).toBe(409);
   });
 
+  it("excludes archived projects by default and includes them with ?includeArchived=true", async () => {
+    const created = await app.inject({
+      method: "POST",
+      url: "/api/projects",
+      headers: authHeaders(),
+      payload: { key: "ARCH", name: "Archivable", ownerId },
+    });
+    expect(created.statusCode).toBe(201);
+    const id = created.json().id as string;
+
+    const archived = await app.inject({
+      method: "PATCH",
+      url: `/api/projects/${id}`,
+      headers: authHeaders(),
+      payload: { status: "archived" },
+    });
+    expect(archived.statusCode).toBe(200);
+
+    // Default: archived project is filtered out.
+    const def = await app.inject({ method: "GET", url: "/api/projects" });
+    const defIds = def.json().items.map((p: { id: string }) => p.id);
+    expect(defIds).not.toContain(id);
+
+    // Opt-in: archived project is included.
+    const incl = await app.inject({
+      method: "GET",
+      url: "/api/projects?includeArchived=true",
+    });
+    const inclIds = incl.json().items.map((p: { id: string }) => p.id);
+    expect(inclIds).toContain(id);
+  });
+
   it("404s an unknown project", async () => {
     const res = await app.inject({ method: "GET", url: "/api/projects/nope" });
     expect(res.statusCode).toBe(404);

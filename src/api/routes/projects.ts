@@ -24,6 +24,12 @@ const updateProjectSchema = z
     message: "at least one field must be provided",
   });
 
+const listProjectsQuerySchema = z.object({
+  includeArchived: z
+    .preprocess((v) => v === "true" || v === true, z.boolean())
+    .default(false),
+});
+
 /** Register project CRUD routes under /api/projects. */
 export async function registerProjectRoutes(
   app: FastifyInstance,
@@ -31,8 +37,10 @@ export async function registerProjectRoutes(
   const projects = createProjectsRepo();
   const users = createUsersRepo();
 
-  app.get("/api/projects", async () => {
-    const items = projects.list();
+  app.get("/api/projects", async (req, reply) => {
+    const parsed = validate(listProjectsQuerySchema, req.query, reply);
+    if (parsed === INVALID) return reply;
+    const items = projects.list({ includeArchived: parsed.includeArchived });
     return { items, total: items.length };
   });
 
