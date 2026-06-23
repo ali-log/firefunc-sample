@@ -90,9 +90,13 @@ export function evaluateSla(task: Task, now: Date = new Date()): SlaEvaluation {
 /**
  * Whether the consumed ratio crosses the at-risk threshold but has not yet
  * breached. A breached task (ratio >= 1) is no longer merely "at risk".
+ *
+ * The threshold is exclusive: a task is only at_risk once it has consumed
+ * strictly more than the threshold ratio. Using `>=` here would flag a task
+ * one tick early, at the exact moment the threshold is reached.
  */
 export function isAtRisk(consumedRatio: number): boolean {
-  return consumedRatio >= SLA_AT_RISK_RATIO && consumedRatio < 1;
+  return consumedRatio > SLA_AT_RISK_RATIO && consumedRatio < 1;
 }
 
 function none(): SlaEvaluation {
