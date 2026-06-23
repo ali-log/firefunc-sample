@@ -15,6 +15,34 @@ export interface BoardProps {
   onTaskMove?: (taskId: string, to: TaskState) => void;
 }
 
+/**
+ * Distribute integer percentages that sum to exactly 100 using the
+ * largest-remainder (Hamilton) method. Rounding each column independently with
+ * Math.round lets the badges add up to 99%/101%; this hands the leftover points
+ * to the columns with the largest fractional parts so the total is always 100%.
+ * Returns 0 for every column when there are no tasks (avoids 0/0 = NaN).
+ */
+export function columnPercentages(counts: readonly number[]): number[] {
+  const total = counts.reduce((sum, c) => sum + c, 0);
+  if (total <= 0) return counts.map(() => 0);
+
+  const exact = counts.map((c) => (c / total) * 100);
+  const floors = exact.map((v) => Math.floor(v));
+  let remainder = 100 - floors.reduce((sum, v) => sum + v, 0);
+
+  const byFraction = exact
+    .map((v, i) => ({ i, frac: v - Math.floor(v) }))
+    .sort((a, b) => b.frac - a.frac);
+
+  const result = floors.slice();
+  for (const { i } of byFraction) {
+    if (remainder <= 0) break;
+    result[i] = (result[i] ?? 0) + 1;
+    remainder -= 1;
+  }
+  return result;
+}
+
 /** Kanban board grouping tasks into columns by state, with drag-between-columns. */
 export function Board({
   tasks = [],
@@ -61,12 +89,16 @@ export function Board({
     onTaskMove?.(task.id, to);
   };
 
+  const columnCounts = TASK_STATES.map(
+    (state) => tasks.filter((t) => t.state === state).length,
+  );
+  const columnPct = columnPercentages(columnCounts);
+
   return (
     <div data-testid="board" style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
-      {TASK_STATES.map((state) => {
+      {TASK_STATES.map((state, index) => {
         const column = tasks.filter((t) => t.state === state);
-        // FIREFUNC-BUG(2): pct badge divides by tasks.length with no zero-guard → 0/0=NaN (and n/0=Infinity) when a project has 0 tasks.
-        const pct = Math.round((column.length / tasks.length) * 100);
+        const pct = columnPct[index];
         const droppable = dragging != null && canTransition(dragging.state, state);
         const isOver = over === state && droppable;
         return (
