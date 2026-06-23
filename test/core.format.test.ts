@@ -48,6 +48,11 @@ describe("format: formatMoney", () => {
   it("negatives place the sign before the symbol", () => {
     expect(formatMoney(-42.1)).toBe("-$42.10");
   });
+  it("values that round to zero have no leading sign", () => {
+    expect(formatMoney(-0.004)).toBe("$0.00");
+    expect(formatMoney(-0)).toBe("$0.00");
+    expect(formatMoney(-0.004, "€", 0)).toBe("€0");
+  });
   it("custom currency and fraction digits", () => {
     expect(formatMoney(99.9, "€")).toBe("€99.90");
     expect(formatMoney(100, "£", 0)).toBe("£100");
