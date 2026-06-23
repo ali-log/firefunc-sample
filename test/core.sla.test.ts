@@ -107,13 +107,16 @@ describe("sla: evaluateSla", () => {
     expect(e.status).toBe("on_track");
   });
 
-  it("uses the priority default when slaMinutes is null", () => {
+  it("returns 'none' with all-null fields when there is no SLA (slaMinutes null)", () => {
     const task = makeTask({ slaMinutes: null, priority: "urgent" });
     const now = new Date(created.getTime() + 1);
     const e = evaluateSla(task, now);
-    expect(e.deadline?.getTime()).toBe(
-      created.getTime() + DEFAULT_SLA_MINUTES.urgent * 60_000,
-    );
+    expect(e).toEqual({
+      status: "none",
+      deadline: null,
+      minutesRemaining: null,
+      consumedRatio: null,
+    });
   });
 
   it("returns 'none' for an unparseable createdAt", () => {
