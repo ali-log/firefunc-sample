@@ -55,6 +55,13 @@ describe("format: formatMoney", () => {
   it("non-finite is safe", () => {
     expect(formatMoney(Number.NaN)).toBe("$0.00");
   });
+  it("tiny negatives that round to zero have no leading sign", () => {
+    expect(formatMoney(-0.004)).toBe("$0.00");
+    expect(formatMoney(-0.004, "€")).toBe("€0.00");
+    expect(formatMoney(-0.4, "$", 0)).toBe("$0");
+    // a value that survives rounding still keeps its sign
+    expect(formatMoney(-0.006)).toBe("-$0.01");
+  });
 });
 
 describe("format: formatRelative", () => {
