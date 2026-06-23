@@ -40,6 +40,7 @@ export function slaDeadline(createdAt: Date, slaMinutes: number): Date {
  *
  * Rules:
  *  - Terminal tasks (`done`) have no live SLA → status "none".
+ *  - A task without an explicit `slaMinutes` has no SLA → status "none".
  *  - A task with an invalid/unparseable createdAt yields "none".
  *  - consumedRatio = elapsed / window, clamped at 0 on the low end.
  *  - status: breached if now >= deadline (ratio >= 1), at_risk once the
@@ -48,6 +49,13 @@ export function slaDeadline(createdAt: Date, slaMinutes: number): Date {
  */
 export function evaluateSla(task: Task, now: Date = new Date()): SlaEvaluation {
   if (task.state === "done") {
+    return none();
+  }
+
+  // No explicit SLA window means the task is not under any SLA, so there is no
+  // deadline to compute. (The per-priority defaults are only an aggregate-report
+  // convenience and must not manufacture a live SLA here.)
+  if (task.slaMinutes === null) {
     return none();
   }
 
