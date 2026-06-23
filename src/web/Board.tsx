@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { TASK_STATES } from "../shared/constants.js";
 import { formatPriority, formatState } from "../core/format.js";
 import { canTransition } from "../core/state-machine.js";
+import { columnPercentages } from "../core/percent.js";
 import { PRIORITY_COLORS, STATE_COLORS } from "./theme.js";
 import { useTheme } from "./ThemeContext.js";
 import type { Task, TaskQuery, TaskState } from "../shared/types.js";
@@ -61,12 +62,17 @@ export function Board({
     onTaskMove?.(task.id, to);
   };
 
+  // Round all column shares together with largest-remainder rounding so the
+  // badges always sum to 100 (independent Math.round per column can hit 101).
+  const pcts = columnPercentages(
+    TASK_STATES.map((state) => tasks.filter((t) => t.state === state).length),
+  );
+
   return (
     <div data-testid="board" style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
-      {TASK_STATES.map((state) => {
+      {TASK_STATES.map((state, i) => {
         const column = tasks.filter((t) => t.state === state);
-        // FIREFUNC-BUG(2): pct badge divides by tasks.length with no zero-guard → 0/0=NaN (and n/0=Infinity) when a project has 0 tasks.
-        const pct = Math.round((column.length / tasks.length) * 100);
+        const pct = pcts[i] ?? 0;
         const droppable = dragging != null && canTransition(dragging.state, state);
         const isOver = over === state && droppable;
         return (
