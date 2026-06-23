@@ -52,6 +52,11 @@ describe("format: formatMoney", () => {
     expect(formatMoney(99.9, "€")).toBe("€99.90");
     expect(formatMoney(100, "£", 0)).toBe("£100");
   });
+  it("3-char currency code keeps thousands grouping", () => {
+    expect(formatMoney(1234.5, "USD")).toBe("USD1,234.50");
+    expect(formatMoney(1234567, "EUR")).toBe("EUR1,234,567.00");
+    expect(formatMoney(-9999.99, "GBP")).toBe("-GBP9,999.99");
+  });
   it("non-finite is safe", () => {
     expect(formatMoney(Number.NaN)).toBe("$0.00");
   });
