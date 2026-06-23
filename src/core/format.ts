@@ -61,9 +61,11 @@ export function formatMoney(
   fractionDigits = 2,
 ): string {
   if (!Number.isFinite(amount)) return `${currency}0.00`;
-  const sign = amount < 0 ? "-" : "";
   const abs = Math.abs(amount);
   const fixed = abs.toFixed(fractionDigits);
+  // Derive the sign from the rounded value, so a tiny negative that rounds to
+  // zero (e.g. -0.004 -> "0.00") has no leading "-" (avoids "-$0.00").
+  const sign = amount < 0 && Number(fixed) !== 0 ? "-" : "";
   const [whole, frac] = fixed.split(".");
   const grouped = (whole as string).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   const body = frac ? `${grouped}.${frac}` : grouped;
