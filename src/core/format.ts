@@ -1,4 +1,4 @@
-import type { Priority, TaskState } from "../shared/types.js";
+import type { Priority, Task, TaskState } from "../shared/types.js";
 
 /** Human-readable label for a task state. */
 export function formatState(state: TaskState): string {
@@ -120,4 +120,15 @@ export function formatRelative(date: Date, now: Date = new Date()): string {
 /** Build a task reference key like "FIRE-123". */
 export function formatTaskRef(projectKey: string, number: number): string {
   return `${projectKey}-${number}`;
+}
+
+/**
+ * Compact one-line task summary for notifications, e.g.
+ *   "[HIGH] Fix the parser (in_progress)"
+ * — uppercased priority in brackets, the title, then the state in parentheses.
+ */
+export function formatTaskSummary(
+  task: Pick<Task, "priority" | "title" | "state">,
+): string {
+  return `[${task.priority.toUpperCase()}] ${task.title} (${task.state})`;
 }
