@@ -79,12 +79,22 @@ describe("sla: evaluateSla", () => {
     expect(e.deadline?.toISOString()).toBe("2026-01-01T01:40:00.000Z");
   });
 
-  it("at_risk once the threshold ratio is crossed", () => {
+  it("still on_track exactly at the threshold ratio (exclusive boundary)", () => {
     const task = makeTask({ slaMinutes: 100 });
     const now = new Date(created.getTime() + SLA_AT_RISK_RATIO * 100 * 60_000);
     const e = evaluateSla(task, now);
-    expect(e.status).toBe("at_risk");
+    expect(e.status).toBe("on_track");
     expect(e.consumedRatio).toBeCloseTo(SLA_AT_RISK_RATIO, 6);
+  });
+
+  it("at_risk once the threshold ratio is crossed", () => {
+    const task = makeTask({ slaMinutes: 100 });
+    // One minute past the 80-minute at-risk threshold of a 100-minute window.
+    const now = new Date(created.getTime() + (SLA_AT_RISK_RATIO * 100 + 1) * 60_000);
+    const e = evaluateSla(task, now);
+    expect(e.status).toBe("at_risk");
+    expect(e.consumedRatio).toBeGreaterThan(SLA_AT_RISK_RATIO);
+    expect(e.consumedRatio).toBeLessThan(1);
   });
 
   it("breached at and beyond the deadline, with negative minutesRemaining", () => {
@@ -123,9 +133,10 @@ describe("sla: evaluateSla", () => {
 });
 
 describe("sla: isAtRisk", () => {
-  it("true only in [threshold, 1)", () => {
+  it("true only in (threshold, 1)", () => {
     expect(isAtRisk(SLA_AT_RISK_RATIO - 0.01)).toBe(false);
-    expect(isAtRisk(SLA_AT_RISK_RATIO)).toBe(true);
+    expect(isAtRisk(SLA_AT_RISK_RATIO)).toBe(false); // exclusive lower bound
+    expect(isAtRisk(SLA_AT_RISK_RATIO + 0.01)).toBe(true);
     expect(isAtRisk(0.99)).toBe(true);
     expect(isAtRisk(1)).toBe(false);
     expect(isAtRisk(1.5)).toBe(false);
