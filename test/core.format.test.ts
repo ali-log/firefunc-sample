@@ -6,6 +6,7 @@ import {
   formatRelative,
   formatState,
   formatTaskRef,
+  formatTaskSummary,
 } from "../src/core/format.js";
 
 describe("format: state & priority labels", () => {
@@ -92,5 +93,22 @@ describe("format: formatRelative", () => {
 describe("format: formatTaskRef", () => {
   it("joins key and number", () => {
     expect(formatTaskRef("FIRE", 123)).toBe("FIRE-123");
+  });
+});
+
+describe("format: formatTaskSummary", () => {
+  it("uppercases priority, keeps title and raw state", () => {
+    expect(
+      formatTaskSummary({
+        priority: "high",
+        title: "Fix the parser",
+        state: "in_progress",
+      }),
+    ).toBe("[HIGH] Fix the parser (in_progress)");
+  });
+  it("handles other priorities and states", () => {
+    expect(
+      formatTaskSummary({ priority: "urgent", title: "Ship it", state: "todo" }),
+    ).toBe("[URGENT] Ship it (todo)");
   });
 });
