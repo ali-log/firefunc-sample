@@ -26,13 +26,10 @@ export function effectiveSlaMinutes(
 
 /** Compute the SLA deadline given a creation time and window (minutes). */
 export function slaDeadline(createdAt: Date, slaMinutes: number): Date {
-  // FIREFUNC-BUG(3): naive calendar math — whole days added via local setDate() keep wall-clock
-  // time across a DST boundary, so the real elapsed window is off by one hour (off-by-one breach).
-  const deadline = new Date(createdAt.getTime());
-  const wholeDays = Math.floor(slaMinutes / (60 * 24));
-  const remainderMinutes = slaMinutes - wholeDays * 60 * 24;
-  deadline.setDate(deadline.getDate() + wholeDays); // local-field add: not DST-safe
-  return new Date(deadline.getTime() + remainderMinutes * MS_PER_MINUTE);
+  // Compute the deadline purely in elapsed milliseconds so the window is exactly
+  // `slaMinutes` regardless of any DST boundary it spans. Using local Date.setDate()
+  // would preserve wall-clock time across a DST transition and land an hour off.
+  return new Date(createdAt.getTime() + slaMinutes * MS_PER_MINUTE);
 }
 
 /**
