@@ -1,3 +1,22 @@
+/**
+ * Task state machine.
+ *
+ * A task is always in exactly one of four states: `todo`, `in_progress`,
+ * `blocked`, or `done`. The allowed moves between them are defined by
+ * STATE_TRANSITIONS in ../shared/constants.ts; the table below mirrors that
+ * source of truth so new contributors can see the workflow at a glance:
+ *
+ *   from         -> allowed targets
+ *   ------------    --------------------------------
+ *   todo         -> in_progress, blocked, done
+ *   in_progress  -> todo, blocked, done
+ *   blocked      -> todo, in_progress
+ *   done         -> todo, in_progress   (reopened)
+ *
+ * In addition, a transition to the same state is always permitted as an
+ * idempotent no-op, and unknown states never transition anywhere. `done` is
+ * the only terminal state, though it may be reopened to `todo`/`in_progress`.
+ */
 import { STATE_TRANSITIONS, TASK_STATES } from "../shared/constants.js";
 import type { TaskState } from "../shared/types.js";
 
