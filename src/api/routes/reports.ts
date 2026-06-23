@@ -3,13 +3,13 @@ import { z } from "zod";
 import { createTasksRepo } from "../../db/tasks-repo.js";
 import { createProjectsRepo } from "../../db/projects-repo.js";
 import { effectiveSlaMinutes, slaDeadline } from "../../core/sla.js";
-import { PRIORITIES, TASK_STATES } from "../../shared/constants.js";
+import { countTasksByState } from "../../core/task-stats.js";
+import { PRIORITIES } from "../../shared/constants.js";
 import type {
   BurndownPoint,
   Priority,
   ProjectReport,
   Task,
-  TaskState,
 } from "../../shared/types.js";
 import { INVALID, notFound, validate } from "../http.js";
 
@@ -33,12 +33,6 @@ function allProjectTasks(
   return out;
 }
 
-function emptyByState(): Record<TaskState, number> {
-  const r = {} as Record<TaskState, number>;
-  for (const s of TASK_STATES) r[s] = 0;
-  return r;
-}
-
 function emptyByPriority(): Record<Priority, number> {
   const r = {} as Record<Priority, number>;
   for (const p of PRIORITIES) r[p] = 0;
@@ -51,7 +45,7 @@ export function buildProjectReport(
   tasks: Task[],
   now: Date = new Date(),
 ): ProjectReport {
-  const byState = emptyByState();
+  const byState = countTasksByState(tasks);
   const byPriority = emptyByPriority();
   let overdue = 0;
   let slaBreached = 0;
@@ -62,7 +56,6 @@ export function buildProjectReport(
   const weekAgo = new Date(now.getTime() - 7 * MS_PER_DAY);
 
   for (const t of tasks) {
-    byState[t.state] += 1;
     byPriority[t.priority] += 1;
 
     const open = t.state !== "done";
