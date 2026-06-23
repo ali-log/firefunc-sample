@@ -54,6 +54,21 @@ describe("sla: slaDeadline", () => {
     const created = new Date("2026-01-01T00:00:00.000Z");
     expect(slaDeadline(created, 90).toISOString()).toBe("2026-01-01T01:30:00.000Z");
   });
+
+  it("keeps the window exact across a US DST (spring-forward) boundary", () => {
+    // US Eastern springs forward at 2026-03-08 02:00 local. A one-day SLA that
+    // crosses it must elapse exactly 1440 minutes — not 23 hours of wall clock.
+    const prevTz = process.env.TZ;
+    process.env.TZ = "America/New_York";
+    try {
+      const created = new Date("2026-03-08T00:30:00-05:00"); // EST, before the gap
+      const deadline = slaDeadline(created, 24 * 60);
+      expect(deadline.getTime() - created.getTime()).toBe(24 * 60 * 60_000);
+      expect(deadline.toISOString()).toBe("2026-03-09T05:30:00.000Z");
+    } finally {
+      process.env.TZ = prevTz;
+    }
+  });
 });
 
 describe("sla: evaluateSla", () => {
