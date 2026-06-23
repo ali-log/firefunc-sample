@@ -3,6 +3,7 @@ import { TASK_STATES } from "../shared/constants.js";
 import { formatPriority, formatState } from "../core/format.js";
 import { canTransition } from "../core/state-machine.js";
 import { PRIORITY_COLORS, STATE_COLORS } from "./theme.js";
+import { largestRemainderPercentages } from "./percentages.js";
 import { useTheme } from "./ThemeContext.js";
 import type { Task, TaskQuery, TaskState } from "../shared/types.js";
 
@@ -61,12 +62,16 @@ export function Board({
     onTaskMove?.(task.id, to);
   };
 
+  const columns = TASK_STATES.map((state) => tasks.filter((t) => t.state === state));
+  // Largest-remainder rounding so the column percentages always sum to 100
+  // (and never produce NaN/Infinity when a project has 0 tasks).
+  const percentages = largestRemainderPercentages(columns.map((c) => c.length));
+
   return (
     <div data-testid="board" style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
-      {TASK_STATES.map((state) => {
-        const column = tasks.filter((t) => t.state === state);
-        // FIREFUNC-BUG(2): pct badge divides by tasks.length with no zero-guard → 0/0=NaN (and n/0=Infinity) when a project has 0 tasks.
-        const pct = Math.round((column.length / tasks.length) * 100);
+      {TASK_STATES.map((state, idx) => {
+        const column = columns[idx] ?? [];
+        const pct = percentages[idx] ?? 0;
         const droppable = dragging != null && canTransition(dragging.state, state);
         const isOver = over === state && droppable;
         return (
