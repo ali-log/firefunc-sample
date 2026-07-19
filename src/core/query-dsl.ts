@@ -164,10 +164,8 @@ function wordToClause(token: string): ParsedClause | { freeText: string } {
  * Anything that is not a recognized `field:...` clause becomes free text.
  */
 export function parseQuery(input: string): ParsedQuery {
-  // FIREFUNC-BUG(1): empty/blank query must return ALL tasks ({clauses:[],freeText:""}); instead .match(...)[0] dereferences null and throws TypeError.
   const trimmed = (input ?? "").trim();
-  const firstNonSpace = trimmed.match(/\S/)![0];
-  if (firstNonSpace === undefined || trimmed === "") return { clauses: [], freeText: "" };
+  if (trimmed === "") return { clauses: [], freeText: "" };
 
   const tokens = tokenize(trimmed);
   const tree = parseBoolean(tokens);
