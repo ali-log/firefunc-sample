@@ -15,6 +15,16 @@ export interface BoardProps {
   onTaskMove?: (taskId: string, to: TaskState) => void;
 }
 
+/**
+ * Percentage of `total` that `count` represents, rounded to a whole number.
+ * Guards the denominator so an empty board (or a stray column) yields `0`
+ * instead of `NaN`/`Infinity`.
+ */
+export function columnPercent(count: number, total: number): number {
+  if (total <= 0) return 0;
+  return Math.round((count / total) * 100);
+}
+
 /** Kanban board grouping tasks into columns by state, with drag-between-columns. */
 export function Board({
   tasks = [],
@@ -65,8 +75,7 @@ export function Board({
     <div data-testid="board" style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
       {TASK_STATES.map((state) => {
         const column = tasks.filter((t) => t.state === state);
-        // FIREFUNC-BUG(2): pct badge divides by tasks.length with no zero-guard → 0/0=NaN (and n/0=Infinity) when a project has 0 tasks.
-        const pct = Math.round((column.length / tasks.length) * 100);
+        const pct = columnPercent(column.length, tasks.length);
         const droppable = dragging != null && canTransition(dragging.state, state);
         const isOver = over === state && droppable;
         return (
