@@ -40,6 +40,19 @@ npm test
 npm run dev   # serves /health on http://localhost:3000
 ```
 
+## Contributing
+
+Before opening a pull request, make sure the test suite passes:
+
+```bash
+npm ci      # install dependencies (Node 20+)
+npm test    # run the vitest suite
+```
+
+`npm test` runs the full vitest suite once (via `vitest run`). To iterate while
+developing, run `npx vitest` for watch mode. End-to-end Playwright tests are
+available via `npm run test:e2e`.
+
 ## Domain model
 
 `Task` (state: `todo | in_progress | blocked | done`, priority:
