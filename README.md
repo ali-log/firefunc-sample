@@ -46,3 +46,7 @@ npm run dev   # serves /health on http://localhost:3000
 `low | medium | high | urgent`) belongs to a `Project`, is reported/assigned to
 `User`s, carries labels, an optional SLA window, and an optional recurrence rule.
 See `src/shared/types.ts` for the full, frozen contract.
+
+## License
+
+Released under the [MIT License](LICENSE).
