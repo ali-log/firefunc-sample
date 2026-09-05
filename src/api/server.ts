@@ -9,6 +9,7 @@ import { registerTaskRoutes } from "./routes/tasks.js";
 import { registerProjectRoutes } from "./routes/projects.js";
 import { registerUserRoutes } from "./routes/users.js";
 import { registerReportRoutes } from "./routes/reports.js";
+import { registerOrderRoutes } from "./routes/orders.js";
 
 /** Build a configured but unstarted Fastify instance. */
 export async function buildServer(): Promise<FastifyInstance> {
@@ -53,6 +54,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   await registerProjectRoutes(app);
   await registerUserRoutes(app);
   await registerReportRoutes(app);
+  await registerOrderRoutes(app);
 
   return app;
 }
